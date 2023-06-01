@@ -1,0 +1,54 @@
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+
+# Load the stock price data
+df = pd.read_csv('stock_prices.csv')  # Replace 'stock_prices.csv' with your dataset
+
+# Preprocess the data
+scaler = MinMaxScaler(feature_range=(0, 1))
+scaled_data = scaler.fit_transform(df['Close'].values.reshape(-1, 1))
+
+# Split the data into training and testing sets
+training_size = int(len(scaled_data) * 0.8)
+train_data = scaled_data[:training_size]
+test_data = scaled_data[training_size:]
+
+# Create sequences for input data and labels
+def create_sequences(data, sequence_length):
+    X, y = [], []
+    for i in range(len(data) - sequence_length):
+        X.append(data[i:i+sequence_length])
+        y.append(data[i+sequence_length])
+    return np.array(X), np.array(y)
+
+sequence_length = 60  # Length of input sequence
+X_train, y_train = create_sequences(train_data, sequence_length)
+X_test, y_test = create_sequences(test_data, sequence_length)
+
+# Build the RNN model with LSTM layer
+model = Sequential()
+model.add(LSTM(50, return_sequences=True, input_shape=(sequence_length, 1)))
+model.add(LSTM(50))
+model.add(Dense(1))
+
+# Compile and train the model
+model.compile(optimizer='adam', loss='mean_squared_error')
+model.fit(X_train, y_train, epochs=10, batch_size=32)
+
+# Make predictions
+train_predictions = model.predict(X_train)
+test_predictions = model.predict(X_test)
+
+# Inverse scale the predictions
+train_predictions = scaler.inverse_transform(train_predictions)
+test_predictions = scaler.inverse_transform(test_predictions)
+
+# Evaluate the model
+train_rmse = np.sqrt(np.mean(np.square(train_predictions - scaler.inverse_transform(y_train))))
+test_rmse = np.sqrt(np.mean(np.square(test_predictions - scaler.inverse_transform(y_test))))
+
+print("Train RMSE:", train_rmse)
+print("Test RMSE:", test_rmse)
