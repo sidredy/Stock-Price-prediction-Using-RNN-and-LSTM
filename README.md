@@ -87,3 +87,5 @@ plt.plot(train['Close'])
 plt.plot(valid[['Close', 'Predictions']])
 plt.legend(['Train', 'Validation', 'Predictions'])
 plt.show()
+valid['Predictions'] = predictions
+
